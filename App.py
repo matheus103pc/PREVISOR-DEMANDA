@@ -99,3 +99,89 @@ for t in range(janela, n_semanas):
     previsto = np.mean(historico[t-janela:t])
     erros_abs_mm.append(abs(real - previsto))
 mae_mm = np.mean(erros_abs_mm) if erros_abs_mm else 0
+
+# Identificação de Tendência pela Regressão Linear (Coeficiente Angular)
+coef_tendencia = modelo.coef_[0]
+if coef_tendencia > 0.5:
+    tendencia = "Crescente"
+elif coef_tendencia < -0.5:
+    tendencia = "Decrescente"
+else:
+    tendencia = "Estável"
+
+
+# 7. EXIBIÇÃO DOS RESULTADOS (DASHBOARD)
+col1, col2 = st.columns([1, 2])
+
+with col1:
+    st.subheader("📋 Tabelas de Dados")
+    
+    # Exibir histórico
+    df_hist = pd.DataFrame({"Semana": semanas_historicas, "Demanda Real": historico})
+    st.write(f"**Histórico de {produto}:**")
+    st.dataframe(df_hist.set_index("Semana"), use_container_width=True)
+    
+    # Exibir Previsões Futuras
+    df_prev = pd.DataFrame({
+        "Semana": semanas_futuras_indices,
+        "Média Móvel": [round(x, 1) for x in previsoes_mm],
+        "Suavização Exp.": [round(x, 1) for x in previsoes_se],
+        "Regressão Linear": [round(x, 1) for x in previsoes_rl]
+    })
+    st.write("**Previsões Futuras Calculadas:**")
+    st.dataframe(df_prev.set_index("Semana"), use_container_width=True)
+
+with col2:
+    st.subheader("📊 Gráfico Comparativo")
+    
+    fig, ax = plt.subplots(figsize=(10, 5))
+    # Plot do Histórico
+    ax.plot(semanas_historicas, historico, marker='o', label='Histórico Real', color='black', linewidth=2)
+    
+    # Linhas de previsão unindo o último ponto histórico às projeções
+    ultimo_w = semanas_historicas[-1]
+    ultimo_v = historico[-1]
+    
+    ax.plot([ultimo_w] + semanas_futuras_indices, [ultimo_v] + previsoes_mm, marker='x', linestyle='--', label='Média Móvel (3 sem)')
+    ax.plot([ultimo_w] + semanas_futuras_indices, [ultimo_v] + previsoes_se, marker='^', linestyle='--', label='Suavização Exponencial')
+    ax.plot([ultimo_w] + semanas_futuras_indices, [ultimo_v] + previsoes_rl, marker='s', linestyle='--', label='Regressão Linear (Tendência)')
+    
+    ax.set_xlabel("Semanas")
+    ax.set_ylabel("Quantidade Demandada")
+    ax.set_title(f"Previsão de Demanda para: {produto}")
+    ax.grid(True, linestyle=':', alpha=0.6)
+    ax.legend()
+    
+    st.pyplot(fig)
+    
+    # KPIs Rápidos
+    st.subheader("🔍 Indicadores do Modelo")
+    kpi1, kpi2 = st.columns(2)
+    kpi1.metric("Tendência Calculada", tendencia)
+    kpi2.metric("Erro Médio Histórico (MAE Média Móvel)", f"{round(mae_mm, 2)} unid.")
+
+st.divider()
+
+# 8. SEÇÃO: RECOMENDAÇÃO GERENCIAL
+st.subheader("💡 Recomendação Gerencial para Tomada de Decisão")
+
+if tendencia == "Crescente":
+    st.success(f"""
+    📈 **Atenção Planejamento!** A demanda do **{produto}** apresenta uma clara tendência de **CRESCIMENTO**.
+    * **Impacto na Produção:** Recomenda-se utilizar as projeções da **Regressão Linear**, pois os métodos de média podem subestimar a necessidade real.
+    * **Ação Recomendada:** Avalie a capacidade produtiva das próximas semanas. Há riscos iminentes de **falta de produto** e perda de vendas caso a produção permaneça estática. Considere turnos extras se necessário.
+    """)
+elif tendencia == "Decrescente":
+    st.warning(f"""
+    📉 **Atenção Planejamento!** A demanda do **{produto}** apresenta uma tendência de **QUEDA**.
+    * **Impacto na Produção:** Continuar produzindo nos níveis anteriores gerará **excesso de estoque**, aumentando drasticamente os custos de armazenagem e riscos de obsolescência.
+    * **Ação Recomendada:** Reduza o ritmo de produção gradativamente, acompanhando a projeção da Regressão Linear ou adote a Média Móvel para uma desaceleração mais suave.
+    """)
+else:
+    st.info(f"""
+    ⚖️ **Demanda Estável:** O produto **{produto}** apresenta um comportamento linear e **ESTÁVEL**.
+    * **Impacto na Produção:** O risco de grandes erros é menor. A **Média Móvel** ou a **Suavização Exponencial** são excelentes referências para manter a estabilidade da fábrica.
+    * **Ação Recomendada:** Mantenha os lotes padrão de produção atuais e use a previsão como teto de segurança para compras de matéria-prima.
+    """)
+
+st.caption("⚠️ *Lembrete Acadêmico: Previsão de demanda serve como apoio e direcionamento, não representa uma certeza absoluta do mercado.*")
