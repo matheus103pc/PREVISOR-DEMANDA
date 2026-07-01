@@ -98,4 +98,4 @@ for t in range(janela, n_semanas):
     real = historico[t]
     previsto = np.mean(historico[t-janela:t])
     erros_abs_mm.append(abs(real - previsto))
-mae_mm = np.mean(erros_abs_mm) if erros_abs_mm
+mae_mm = np.mean(erros_abs_mm) if erros_abs_mm else 0
